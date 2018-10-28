@@ -1,3 +1,6 @@
 [submodule "contrib/morfessor"]
 	path = contrib/morfessor
 	url = https://github.com/aalto-speech/morfessor
+[submodule "contrib/NeuralMorphemeSegmentation"]
+	path = contrib/NeuralMorphemeSegmentation
+	url = https://github.com/AlexeySorokin/NeuralMorphemeSegmentation
