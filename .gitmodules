@@ -1,0 +1,3 @@
+[submodule "contrib/morfessor"]
+	path = contrib/morfessor
+	url = https://github.com/aalto-speech/morfessor
