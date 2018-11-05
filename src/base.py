@@ -12,6 +12,12 @@ class MorphemeLabel(Enum):
     POSTFIX = 'POSTFIX'
     NONE = None
 
+BMES_PREFIXES = [
+    'S-',
+    'B-',
+    'M-',
+    'E-',
+]
 
 class Morpheme(object):
     def __init__(self, part_text, label, begin_pos):
@@ -26,18 +32,27 @@ class Morpheme(object):
 
     def get_labels(self):
         if self.length == 1:
-            return 'S-' + self.label
-        result = ['B-' + self.label]
-        result += ['M-' + self.label for _ in self.part_text[1:-1]]
-        result += ['E-' + self.label]
+            return ['S-' + self.label.value]
+        result = ['B-' + self.label.value]
+        result += ['M-' + self.label.value for _ in self.part_text[1:-1]]
+        result += ['E-' + self.label.value]
         return result
 
+    def get_simple_labels(self):
+        if self.label == MorphemeLabel.SUFF:
+            result = ['B-' + self.label.value]
+            if self.length > 1:
+                result += [self.label.value for _ in self.part_text[1:]]
+            return result
+        else:
+            return [self.label.value] * self.length
+
     def __str__(self):
-        return self.part_text + ':' + self.label
+        return self.part_text + ':' + self.label.value
 
     @property
     def unlabeled(self):
-        return not self.label
+        return not self.label.value
 
 
 class Word(object):
@@ -62,8 +77,18 @@ class Word(object):
             result += morpheme.get_labels()
         return result
 
+    def get_simple_labels(self):
+        result = []
+        for morpheme in self.morphemes:
+            result += morpheme.get_simple_labels()
+        return result
+
+
     def __str__(self):
         return '/'.join([str(morpheme) for morpheme in self.morphemes])
+
+    def __len__(self):
+        return sum(len(m) for m in self.morphemes)
 
     @property
     def unlabeled(self):
@@ -74,7 +99,8 @@ def parse_morpheme(str_repr, position):
     return Morpheme(text, MorphemeLabel[label], position)
 
 def parse_word(str_repr):
-    parts = str_repr.split('/')
+    _, word_parts = str_repr.split('\t')
+    parts = word_parts.split('/')
     morphemes = []
     global_index = 0
     for part in parts:
@@ -112,7 +138,9 @@ def morfessor_evaluate(prediction, target):
     f_score = 2.0 / (1.0 / precision + 1.0 / recall)
     return [("Precision", precision), ("Recall", recall), ("F1", f_score)]
 
-def measure_quality(prediction, targets):
+def measure_quality(predicted_targets, targets):
+    print("PRedicted:" + str(predicted_targets[0:10]))
+    print("Targets:" + str(targets[0:10]))
     TP, FP, FN, equal, total = 0, 0, 0, 0, 0
     SE = ['{}-{}'.format(x, y) for x in "SE" for y in ["ROOT", "PREF", "SUFF", "END", "LINK", "None"]]
     corr_words = 0
