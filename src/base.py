@@ -1,6 +1,6 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 from enum import Enum
-from itertools import product
+
 
 class MorphemeLabel(Enum):
     PREF = 'PREF'
@@ -12,12 +12,14 @@ class MorphemeLabel(Enum):
     POSTFIX = 'POSTFIX'
     NONE = None
 
+
 BMES_PREFIXES = [
     'S-',
     'B-',
     'M-',
     'E-',
 ]
+
 
 class Morpheme(object):
     def __init__(self, part_text, label, begin_pos):
@@ -39,7 +41,7 @@ class Morpheme(object):
         return result
 
     def get_simple_labels(self):
-        if self.label == MorphemeLabel.SUFF:
+        if self.label == MorphemeLabel.SUFF or self.label == MorphemeLabel.PREF or self.label== MorphemeLabel.ROOT:
             result = ['B-' + self.label.value]
             if self.length > 1:
                 result += [self.label.value for _ in self.part_text[1:]]
@@ -83,7 +85,6 @@ class Word(object):
             result += morpheme.get_simple_labels()
         return result
 
-
     def __str__(self):
         return '/'.join([str(morpheme) for morpheme in self.morphemes])
 
@@ -94,9 +95,11 @@ class Word(object):
     def unlabeled(self):
         return all(p.unlabeled for p in self.morphemes)
 
+
 def parse_morpheme(str_repr, position):
     text, label = str_repr.split(':')
     return Morpheme(text, MorphemeLabel[label], position)
+
 
 def parse_word(str_repr):
     _, word_parts = str_repr.split('\t')
@@ -108,43 +111,12 @@ def parse_word(str_repr):
         global_index += len(part)
     return Word(morphemes)
 
-def morfessor_evaluate(prediction, target):
-    if len(prediction) != len(target):
-        raise Exception("Prediction and target sets are not same len")
-    def calc_prop_distance(ref, pred):
-        if len(ref) == 0:
-            return 1.0
-        diff = len(set(ref) - set(pred))
-        return (len(ref) - diff) / float(len(ref))
 
-    def get_array_repr(word):
-        result = []
-        shift = 0
-        for morpheme in word.morphemes:
-            shitf += len(morpheme)
-            result.append(shift)
-        return result
-
-    sum_precision = 0
-    sum_recall = 0
-    for pred_word, target_word in zip(prediction, target):
-        prediction_array = get_array_repr(pred_word)
-        target_array = get_array_repr(target_word)
-        sum_precision += max(calc_prop_distance(r, p) for p, r in product(prediction_array, target_array))
-        sum_recall += max(calc_prop_distance(p, r) for p, r in product(prediction_array, value_array))
-
-    precision = sum_precision / len(prediction)
-    recall = sum_recall / len(prediction)
-    f_score = 2.0 / (1.0 / precision + 1.0 / recall)
-    return [("Precision", precision), ("Recall", recall), ("F1", f_score)]
-
-def measure_quality(predicted_targets, targets):
-    print("PRedicted:" + str(predicted_targets[0:10]))
-    print("Targets:" + str(targets[0:10]))
+def measure_quality(predicted_targets, targets, words):
     TP, FP, FN, equal, total = 0, 0, 0, 0, 0
     SE = ['{}-{}'.format(x, y) for x in "SE" for y in ["ROOT", "PREF", "SUFF", "END", "LINK", "None"]]
     corr_words = 0
-    for corr, pred in zip(targets, predicted_targets):
+    for corr, pred, word in zip(targets, predicted_targets, words):
         corr_len = len(corr)
         pred_len = len(pred)
         boundaries = [i for i in range(corr_len) if corr[i] in SE]
@@ -156,10 +128,10 @@ def measure_quality(predicted_targets, targets):
         equal += sum(int(x==y) for x, y in zip(corr, pred))
         total += len(corr)
         corr_words += (corr == pred)
+        if corr != pred:
+            print("Error in word '{}':\n correct:".format(word.get_word()), corr, '\n!=\n wrong:', pred)
 
     metrics = ["Precision", "Recall", "F1", "Accuracy", "Word accuracy"]
     results = [TP / (TP+FP), TP / (TP+FN), TP / (TP + 0.5*(FP+FN)),
                equal / total, corr_words / len(targets)]
     return list(zip(metrics, results))
-
-

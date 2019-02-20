@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import sys
 import os
 import inspect
@@ -719,6 +720,8 @@ class Partitioner:
             if i % 1000 == 0 and i > 0:
                 print("{} words decoded".format(i))
             answer[i] = self._decode_best(elem, len(word))
+            print("Word:", word)
+            print("Label:", str(answer[i]))
         return answer
 
     def labels_to_morphemes(self, word, labels, probs=None, return_probs=False, return_types=False):

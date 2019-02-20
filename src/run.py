@@ -1,10 +1,19 @@
-#-*- conding: utf-8 -*-
-from morphemmer import *
+#-*- coding: utf-8 -*-
+from morphemmer import ForestMorphemmer, NeuralMorphemmer, MorfessorMorphemmer, CrossMorphyMorpemmer
 from base import parse_word
 import logging
 import argparse
 import json
 import random
+
+random.seed(42)
+
+AVAILABLE_MODELS = {
+    'GBDT': ForestMorphemmer,
+    'CNN': NeuralMorphemmer,
+    'Morfessor': MorfessorMorphemmer,
+    'CrossMorphy': CrossMorphyMorpemmer,
+}
 
 def split_words(words, factor):
     random.shuffle(words)
@@ -20,19 +29,18 @@ if __name__ == "__main__":
     parser.add_argument("--models-config", required=True)
     parser.add_argument("--data-path", required=True)
     parser.add_argument("--split-factor", type=float, default=0.2)
+    parser.add_argument("--model", choices=AVAILABLE_MODELS.keys(), required=True)
+    parser.add_argument("--dictionary", choices=('cross_lexica', 'tikhonov',), required=True)
 
     args = parser.parse_args()
 
     with open(args.models_config, 'r') as config_file:
         models_config = json.load(config_file)
-
     logging.info("Config initialized")
 
-    models = []
-    for model in [ForestMorphemmer]:
-        logging.info("Creating model %s", model.get_name())
-        models.append(model(models_config.setdefault(model.get_name(), {})))
-
+    ModelType = AVAILABLE_MODELS[args.model]
+    logging.info("Creating model %s", ModelType.get_name())
+    model = ModelType(models_config.setdefault(ModelType.get_name(), {}), args.dictionary)
     words = []
     counter = 0
     logging.info("Start loading data from file %s", args.data_path)
@@ -48,18 +56,13 @@ if __name__ == "__main__":
     train_part, test_part = split_words(words, args.split_factor)
     logging.info("Split dataset on train %ld words and test %ld words", len(train_part), len(test_part))
 
-    logging.info("Start training models")
-    for model in models:
-        logging.info("Training model '%s'", model.get_name())
-        model.train(train_part)
-        logging.info("Train of model '%s' finished", model.get_name())
-
-    logging.info("All models are trained")
+    logging.info("Training model '%s'", model.get_name())
+    model.train(train_part)
+    logging.info("Train of model '%s' finished", model.get_name())
 
     evaluation_results = {}
-    for model in models:
-        logging.info("Evaluating model '%s'", model.get_name())
-        evaluation_results[model.get_name()] = model.evaluate(test_part)
-        logging.info("Evaluation of model '%s' finished", model.get_name())
+    logging.info("Evaluating model '%s'", model.get_name())
+    evaluation_results[model.get_name()] = model.evaluate(test_part)
+    logging.info("Evaluation of model '%s' finished", model.get_name())
 
     print(evaluation_results)
