@@ -716,12 +716,12 @@ class Partitioner:
             for i, elem in zip(bucket_indexes, bucket_probs):
                 word_probs[i] = elem
         answer = [None] * len(words)
+        self.bad_counter = 0
         for i, (elem, word) in enumerate(zip(word_probs, words)):
             if i % 1000 == 0 and i > 0:
                 print("{} words decoded".format(i))
             answer[i] = self._decode_best(elem, len(word))
-            print("Word:", word)
-            print("Label:", str(answer[i]))
+        print ("Totally corrected:", self.bad_counter)
         return answer
 
     def labels_to_morphemes(self, word, labels, probs=None, return_probs=False, return_types=False):
@@ -828,7 +828,11 @@ class Partitioner:
             possible_states = self.get_possible_next_states(state)
             # оставляем только возможные состояния.
             probs_to_return[j,possible_states] = probs[j+1,possible_states]
-        return [self.target_symbols_[i] for i in best_states[1:]], probs_to_return
+        result_targets = [self.target_symbols_[i] for i in best_states[1:]]
+        if result_targets != best_labels[1:]:
+            print("{} != {}".format(result_targets, best_labels[1:]))
+            self.bad_counter += 1
+        return result_targets, probs_to_return
 
     def get_possible_next_states(self, state_index):
         state = self.target_symbols_[state_index]

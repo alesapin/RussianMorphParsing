@@ -96,7 +96,7 @@ class ForestMorphemmer(Morphemmer):
             path = params["cross_lexica_morph_info"]
         else:
             path = params["tikhonov_morph_info"]
-        self.classifier = CatboostSpliter(path)
+        self.classifier = CatboostSpliter(path, "../models/best_tikhonov_model.bin")
 
     @staticmethod
     def get_name():
@@ -124,6 +124,7 @@ class MorfessorMorphemmer(Morphemmer):
         result = []
         for word in sample_words:
             text = word.get_word()
+            w = Word(text, language="ru")
             result.append(w.morphemes)
         return result
 

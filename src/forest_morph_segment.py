@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from catboost import CatBoostClassifier
+import catboost
 import subprocess
 import json
 import ahocorasick
@@ -193,9 +194,15 @@ class CatboostSpliter(object):
     F_AUTOMATA_CACHE = {}
     B_AUTOMATA_CACHE = {}
 
-    def __init__(self, morph_info_path):
+    def __init__(self, morph_info_path, model_path):
         self.morph_info_path = morph_info_path
-        self.model = CatBoostClassifier(learning_rate=0.03, depth=10, loss_function='MultiClass', classes_count=len(self.PARTS_MAPPING), iterations=25000, task_type='GPU', one_hot_max_size=35)
+
+        self.model = CatBoostClassifier(learning_rate=0.03, depth=9, loss_function='MultiClass', classes_count=len(self.PARTS_MAPPING))
+        if model_path is None:
+            self.loaded = False
+        else:
+            self.model.load_model(model_path)
+            self.loaded = True
         self.corrector = Corrector([v.value for v in MorphemeLabel if v.value is not None] + ['B-SUFF', 'B-PREF', 'B-ROOT'])
 
     def build_automations(self, words):
@@ -302,10 +309,11 @@ class CatboostSpliter(object):
         logging.info("Start building automations")
         self.fb, self.bb = self.build_automations([word.get_word() for word in words])
         logging.info("Finished building automations")
-        x, y = self._prepare_words(words)
-        #print('X:' + str('\n'.join([str(v) for v in x[:10]])))
-        #print('Y:' + str(y[:10]))
-        self.model.fit(x, y, cat_features=[0, 1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17, 18, 19, 20])
+        if not self.loaded:
+            x, y = self._prepare_words(words)
+            self.model.fit(x, y, cat_features=[0, 1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17, 18, 19, 20])
+        else:
+            logging.info("Model already trained")
 
     def _transform_classification(self, parse):
         parts = []
@@ -355,13 +363,20 @@ class CatboostSpliter(object):
         start = 0
         reverse_mapping = {v:k for k, v in self.PARTS_MAPPING.items()}
         result = []
+        counter = 0
         for word in words:
             word_len = len(word)
             end = start + word_len
             raw_parse = [reverse_mapping[int(num)] for num in pred_class[start:end]]
             raw_probs = np.asarray([elem for elem in pred_probs[start:end]])
             corrected_parse = self.corrector.decode_best(raw_probs)
-            parse = self._transform_classification(corrected_parse)
+            corrected = False
+            if raw_parse != corrected_parse:
+                counter += 1
+                #print(word.get_word(),'\t', '|'.join(raw_parse), '\t', '|'.join(corrected_parse))
+                corrected = True
+            parse = self._transform_classification(raw_parse)
             result.append(parse)
             start = end
+        print("TotalCorrection:", counter)
         return result
