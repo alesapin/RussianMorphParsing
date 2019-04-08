@@ -96,7 +96,8 @@ class ForestMorphemmer(Morphemmer):
             path = params["cross_lexica_morph_info"]
         else:
             path = params["tikhonov_morph_info"]
-        self.classifier = CatboostSpliter(path, "../models/best_tikhonov_model.bin")
+        if params["load"]:
+            self.classifier = CatboostSpliter(path, params["load"])
 
     @staticmethod
     def get_name():

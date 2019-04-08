@@ -31,6 +31,7 @@ if __name__ == "__main__":
     parser.add_argument("--split-factor", type=float, default=0.2)
     parser.add_argument("--model", choices=AVAILABLE_MODELS.keys(), required=True)
     parser.add_argument("--dictionary", choices=('cross_lexica', 'tikhonov',), required=True)
+    parser.add_argument("--load", default="")
 
     args = parser.parse_args()
 
@@ -40,7 +41,9 @@ if __name__ == "__main__":
 
     ModelType = AVAILABLE_MODELS[args.model]
     logging.info("Creating model %s", ModelType.get_name())
-    model = ModelType(models_config.setdefault(ModelType.get_name(), {}), args.dictionary)
+    params = models_config.setdefault(ModelType.get_name(), {})
+    params["load"] = args.load
+    model = ModelType(params, args.dictionary)
     words = []
     counter = 0
     logging.info("Start loading data from file %s", args.data_path)
