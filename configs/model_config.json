@@ -16,7 +16,7 @@
             "dropout": 0.2,
             "to_memorize_ngram_counts": false,
             "context_dropout": 0.2,
-            "models_number": 1
+            "models_number": 3
         }
     },
     "morfessor": {
