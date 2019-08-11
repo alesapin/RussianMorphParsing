@@ -1,6 +1,5 @@
-## Training and evaluation of several morphemeic parsing models for Russian language
+## Training and evaluation of morphemeic parsing model for Russian language
 
-### Gradient boosted descision trees
 To train and evaluate GBDT model you can use following commands:
 ```(bash)
 $ pip3 install -r requirements.txt
