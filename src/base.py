@@ -128,8 +128,8 @@ def measure_quality(predicted_targets, targets, words):
         equal += sum(int(x==y) for x, y in zip(corr, pred))
         total += len(corr)
         corr_words += (corr == pred)
-#        if corr != pred:
-#            print("Error in word '{}':\n correct:".format(word.get_word()), corr, '\n!=\n wrong:', pred)
+        if corr != pred:
+            print("Error in word '{}':\n correct:".format(word.get_word()), corr, '\n!=\n wrong:', pred)
 
     metrics = ["Precision", "Recall", "F1", "Accuracy", "Word accuracy"]
     results = [TP / (TP+FP), TP / (TP+FN), TP / (TP + 0.5*(FP+FN)),

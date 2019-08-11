@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import base
 from base import parse_word
+from base import Word
 import time
 import logging
 from neural_morph_segm import Partitioner
 from forest_morph_segment import CatboostSpliter
-import morfessor
+from lstm_morph_segment import LSTMSpliter
 
 
 class Morphemmer(object):
@@ -92,16 +93,37 @@ class NeuralMorphemmer(Morphemmer):
 
 class ForestMorphemmer(Morphemmer):
     def __init__(self, params, dict_name):
-        if dict_name == 'cross_lexica':
-            path = params["cross_lexica_morph_info"]
-        else:
-            path = params["tikhonov_morph_info"]
         if params["load"]:
-            self.classifier = CatboostSpliter(path, params["load"])
+            self.classifier = CatboostSpliter(
+                params["morph_info"], params["load"])
 
     @staticmethod
     def get_name():
         return "catboost"
+
+    def _train_impl(self, train_words):
+        self.classifier.train(train_words)
+
+    def _predict_impl(self, sample_words):
+        return self.classifier.classify(sample_words)
+
+
+class LSTMMorphemmer(Morphemmer):
+    def __init__(self, params, dict_name):
+        self.classifier = LSTMSpliter(
+            models_number=params["models_number"],
+            dropout=params["dropout"],
+            morph_info=params["morph_info"],
+            layers=params["layers"],
+            activation=params["activation"],
+            optimizer=params["optimizer"],
+            validation_split=params["validation_split"],
+            epochs=params["epochs"]
+        )
+
+    @staticmethod
+    def get_name():
+        return "lstm"
 
     def _train_impl(self, train_words):
         self.classifier.train(train_words)

@@ -1,5 +1,5 @@
 #-*- coding: utf-8 -*-
-from morphemmer import ForestMorphemmer, NeuralMorphemmer, MorfessorMorphemmer, CrossMorphyMorpemmer
+from morphemmer import ForestMorphemmer, NeuralMorphemmer, MorfessorMorphemmer, CrossMorphyMorpemmer, LSTMMorphemmer
 from base import parse_word
 import logging
 import argparse
@@ -13,6 +13,7 @@ AVAILABLE_MODELS = {
     'CNN': NeuralMorphemmer,
     'Morfessor': MorfessorMorphemmer,
     'CrossMorphy': CrossMorphyMorpemmer,
+    'LSTM': LSTMMorphemmer,
 }
 
 def split_words(words, factor):
@@ -27,10 +28,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Test several models for morphemic segmentation")
     parser.add_argument("--models-config", required=True)
-    parser.add_argument("--data-path", required=True)
-    parser.add_argument("--split-factor", type=float, default=0.2)
+    parser.add_argument("--train-data-path", required=True)
+    parser.add_argument("--test-data-path", required=True)
     parser.add_argument("--model", choices=AVAILABLE_MODELS.keys(), required=True)
-    parser.add_argument("--dictionary", choices=('cross_lexica', 'tikhonov',), required=True)
+    parser.add_argument(
+        "--dictionary", choices=('cross_lexica', 'tikhonov',), required=True)
     parser.add_argument("--load", default="")
 
     args = parser.parse_args()
@@ -42,21 +44,29 @@ if __name__ == "__main__":
     ModelType = AVAILABLE_MODELS[args.model]
     logging.info("Creating model %s", ModelType.get_name())
     params = models_config.setdefault(ModelType.get_name(), {})
-    params["load"] = args.load
     model = ModelType(params, args.dictionary)
     words = []
     counter = 0
-    logging.info("Start loading data from file %s", args.data_path)
-    with open(args.data_path, 'r') as data:
+    logging.info("Start loading data from file %s", args.train_data_path)
+    train_part = []
+    with open(args.train_data_path, 'r') as data:
         for num, line in enumerate(data):
             counter += 1
-            words.append(parse_word(line.strip()))
+            train_part.append(parse_word(line.strip()))
+            if counter % 1000 == 0:
+                logging.info("Loaded %ld words", counter)
+
+
+    logging.info("Start loading data from file %s", args.test_data_path)
+    test_part = []
+    with open(args.test_data_path, 'r') as data:
+        for num, line in enumerate(data):
+            counter += 1
+            test_part.append(parse_word(line.strip()))
             if counter % 1000 == 0:
                 logging.info("Loaded %ld words", counter)
 
     logging.info("Totally loaded %ld words", len(words))
-
-    train_part, test_part = split_words(words, args.split_factor)
     logging.info("Split dataset on train %ld words and test %ld words", len(train_part), len(test_part))
 
     logging.info("Training model '%s'", model.get_name())
