@@ -55,6 +55,10 @@ class Morphemmer(object):
 
         return self._evaluate(output_words, words)
 
+    def measure_time(self, words):
+        raise Exception("Method measure_time is unimplemented")
+
+
     def _evaluate(self, output_words, words):
         return {
             "quality": base.measure_quality(
@@ -66,8 +70,7 @@ class Morphemmer(object):
 
 class NeuralMorphemmer(Morphemmer):
     def __init__(self, params, dict_name):
-        model_params = params.setdefault('model_params', {})
-        self.partitioner = Partitioner(**model_params)
+        self.partitioner = Partitioner(**params)
 
     def _prepare_input_data(self, words):
         source = []
@@ -90,12 +93,14 @@ class NeuralMorphemmer(Morphemmer):
         predicted_targets = self.partitioner._predict_probs(inputs)
         return [elem[0] for elem in predicted_targets]
 
+    def measure_time(self, words, times):
+        inputs, _ = self._prepare_input_data(words)
+        return self.partitioner.measure_time(inputs, times)
+
 
 class ForestMorphemmer(Morphemmer):
     def __init__(self, params, dict_name):
-        if params["load"]:
-            self.classifier = CatboostSpliter(
-                params["morph_info"], params["load"])
+        self.classifier = CatboostSpliter(params["morph_info"], None)
 
     @staticmethod
     def get_name():
@@ -107,6 +112,8 @@ class ForestMorphemmer(Morphemmer):
     def _predict_impl(self, sample_words):
         return self.classifier.classify(sample_words)
 
+    def measure_time(self, words, times):
+        return self.classifier.measure_time(words, times)
 
 class LSTMMorphemmer(Morphemmer):
     def __init__(self, params, dict_name):
@@ -130,6 +137,9 @@ class LSTMMorphemmer(Morphemmer):
 
     def _predict_impl(self, sample_words):
         return self.classifier.classify(sample_words)
+
+    def measure_time(self, words, times):
+        return self.classifier.measure_time(words, times)
 
 
 class MorfessorMorphemmer(Morphemmer):

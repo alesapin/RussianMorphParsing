@@ -2,6 +2,7 @@
 import sys
 import os
 import inspect
+import time
 import bisect
 from itertools import chain
 from collections import defaultdict
@@ -10,6 +11,7 @@ import numpy as np
 import json
 # import ujson as json
 
+import tensorflow.keras as keras
 import keras.layers as kl
 import keras.backend as kb
 from keras.models import Model
@@ -711,7 +713,6 @@ class Partitioner:
         word_probs = [None] * len(words)
         for r, (bucket_data, (_, bucket_indexes)) in\
                 enumerate(zip(data_by_buckets, indexes_by_buckets), 1):
-            print("Bucket {} predicting".format(r))
             bucket_probs = np.mean([model.predict(bucket_data) for model in self.models_], axis=0)
             for i, elem in zip(bucket_indexes, bucket_probs):
                 word_probs[i] = elem
@@ -723,6 +724,23 @@ class Partitioner:
             answer[i] = self._decode_best(elem, len(word))
         print ("Totally corrected:", self.bad_counter)
         return answer
+
+    def measure_time(self, words, times):
+        data_by_buckets, indexes_by_buckets = self._preprocess(words)
+        result = []
+        for i in range(times):
+            start = time.time()
+            word_probs = [None] * len(words)
+            for r, (bucket_data, (_, bucket_indexes)) in\
+                    enumerate(zip(data_by_buckets, indexes_by_buckets), 1):
+                bucket_probs = np.mean([model.predict(bucket_data) for model in self.models_], axis=0)
+                for i, elem in zip(bucket_indexes, bucket_probs):
+                    word_probs[i] = elem
+
+            finish = time.time()
+            result.append(finish-start)
+        return result
+
 
     def labels_to_morphemes(self, word, labels, probs=None, return_probs=False, return_types=False):
         """
@@ -830,7 +848,7 @@ class Partitioner:
             probs_to_return[j,possible_states] = probs[j+1,possible_states]
         result_targets = [self.target_symbols_[i] for i in best_states[1:]]
         if result_targets != best_labels[1:]:
-            print("{} != {}".format(result_targets, best_labels[1:]))
+            #print("{} != {}".format(result_targets, best_labels[1:]))
             self.bad_counter += 1
         return result_targets, probs_to_return
 

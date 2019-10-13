@@ -5,6 +5,8 @@ import logging
 import argparse
 import json
 import random
+import math
+import statistics
 
 random.seed(42)
 
@@ -34,6 +36,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dictionary", choices=('cross_lexica', 'tikhonov',), required=True)
     parser.add_argument("--load", default="")
+    parser.add_argument("--measure_time", type=int, required=False)
 
     args = parser.parse_args()
 
@@ -70,12 +73,21 @@ if __name__ == "__main__":
     logging.info("Split dataset on train %ld words and test %ld words", len(train_part), len(test_part))
 
     logging.info("Training model '%s'", model.get_name())
-    model.train(train_part)
+    train_time = model.train(train_part)
     logging.info("Train of model '%s' finished", model.get_name())
 
     evaluation_results = {}
     logging.info("Evaluating model '%s'", model.get_name())
     evaluation_results[model.get_name()] = model.evaluate(test_part)
     logging.info("Evaluation of model '%s' finished", model.get_name())
-
     print(evaluation_results)
+
+    if args.measure_time:
+        logging.info("Starting benchmark")
+        bench_result = model.measure_time(test_part, args.measure_time)
+
+        logging.info("Benchmark finished")
+        print("Train time:", train_time)
+        print("Average:", statistics.mean(bench_result))
+        print("Median:", statistics.median(bench_result))
+        print("Variance:", statistics.variance(bench_result))

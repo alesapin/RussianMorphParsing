@@ -429,3 +429,13 @@ class LSTMSpliter(object):
             result.append(parse)
         print("Totally corrected:", corrected)
         return result
+
+    def measure_time(self, words, times):
+        x, _, _ = self._prepare_words(words)
+        result = []
+        for i in range(times):
+            start = time.time()
+            pred = np.mean([model.predict(x) for model in self.models], axis=0)
+            finish = time.time()
+            result.append(finish - start)
+        return result

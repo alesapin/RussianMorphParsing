@@ -2,6 +2,7 @@
 from catboost import CatBoostClassifier
 import catboost
 import subprocess
+import time
 import json
 import ahocorasick
 from base import MorphemeLabel
@@ -197,7 +198,7 @@ class CatboostSpliter(object):
     def __init__(self, morph_info_path, model_path):
         self.morph_info_path = morph_info_path
 
-        self.model = CatBoostClassifier(learning_rate=0.03, depth=9, loss_function='MultiClass', classes_count=len(self.PARTS_MAPPING))
+        self.model = CatBoostClassifier(learning_rate=0.03, depth=9, loss_function='MultiClass', classes_count=len(self.PARTS_MAPPING), task_type="GPU")
         if model_path is None:
             self.loaded = False
         else:
@@ -285,12 +286,8 @@ class CatboostSpliter(object):
         logging.info("Starting morphological analyzer")
         with open(self.morph_info_path, 'r') as anal_data:
             output = json.load(anal_data)
-        logging.info("Finished morphological analyzer")
-        morph_info = {}
-        for k, info in output.items():
-            _, word = k.split("_")
-            morph_info[word] = info['0']
-        return morph_info
+            logging.info("Finished morphological analyzer")
+            return output
 
     def _prepare_words(self, words):
         morph_info = self._get_morph_info(words)
@@ -380,3 +377,14 @@ class CatboostSpliter(object):
             start = end
         print("TotalCorrection:", counter)
         return result
+
+    def measure_time(self, words, times):
+        x, _ = self._prepare_words(words)
+        result = []
+        for i in range(times):
+            start = time.time()
+            pred_probs = self.model.predict_proba(x)
+            finish = time.time()
+            result.append(finish - start)
+        return result
+
